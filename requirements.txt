@@ -1,0 +1,11 @@
+streamlit==1.35.0
+yfinance==0.2.38
+pandas==2.2.2
+numpy==1.26.4
+vaderSentiment==3.3.2
+newsapi-python==0.2.7
+praw==7.7.1
+twilio==9.2.3
+requests==2.31.0
+plotly==5.22.0
+pytz==2024.1
