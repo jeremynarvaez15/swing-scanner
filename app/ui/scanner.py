@@ -1,0 +1,66 @@
+import streamlit as st
+import pandas as pd
+
+
+def render_scanner(scan_results: list[dict]):
+    st.subheader("🔍 Market Scanner")
+
+    if not scan_results:
+        st.info("Scanner data loading...")
+        return
+
+    df = pd.DataFrame(scan_results)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        min_score = st.slider("Min Signal Score", 0, 100, 0)
+    with col2:
+        sectors = ["All"] + sorted(df["sector"].dropna().unique().tolist())
+        selected_sector = st.selectbox("Sector", sectors)
+    with col3:
+        signal_filter = st.selectbox("Signal Type", ["All", "BUY (≥70)", "SELL (≤30)", "Neutral"])
+
+    filtered = df[df["score"] >= min_score].copy()
+    if selected_sector != "All":
+        filtered = filtered[filtered["sector"] == selected_sector]
+    if signal_filter == "BUY (≥70)":
+        filtered = filtered[filtered["score"] >= 70]
+    elif signal_filter == "SELL (≤30)":
+        filtered = filtered[filtered["score"] <= 30]
+    elif signal_filter == "Neutral":
+        filtered = filtered[(filtered["score"] > 30) & (filtered["score"] < 70)]
+
+    filtered = filtered.sort_values("score", ascending=False)
+    st.caption(f"Showing {len(filtered)} of {len(df)} stocks")
+
+    display_cols = {
+        "ticker": "Ticker",
+        "price": "Price",
+        "change_pct": "Day %",
+        "score": "Score",
+        "rsi": "RSI",
+        "macd_signal": "MACD",
+        "ma_cross": "MA Cross",
+        "bb_position": "Bollinger",
+        "volume_ratio": "Vol Ratio",
+        "sentiment_label": "Sentiment",
+        "sector": "Sector",
+    }
+
+    available = [c for c in display_cols if c in filtered.columns]
+    display_df = filtered[available].rename(columns={k: v for k, v in display_cols.items() if k in available})
+
+    if "Price" in display_df.columns:
+        display_df["Price"] = display_df["Price"].apply(lambda x: f"${x:.2f}")
+    if "Day %" in display_df.columns:
+        display_df["Day %"] = display_df["Day %"].apply(lambda x: f"{x:+.2f}%")
+    if "RSI" in display_df.columns:
+        display_df["RSI"] = display_df["RSI"].apply(lambda x: f"{x:.1f}")
+    if "Vol Ratio" in display_df.columns:
+        display_df["Vol Ratio"] = display_df["Vol Ratio"].apply(lambda x: f"{x:.1f}x")
+
+    col_config = {}
+    if "Score" in display_df.columns:
+        col_config["Score"] = st.column_config.ProgressColumn("Score", min_value=0, max_value=100, format="%d")
+
+    st.dataframe(display_df, use_container_width=True, hide_index=True, column_config=col_config)
