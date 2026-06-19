@@ -1,12 +1,22 @@
+import io
 import pandas as pd
 import requests
 from functools import lru_cache
+
+_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; SwingScanner/1.0)"}
+
+
+def _read_html_with_headers(url: str) -> list[pd.DataFrame]:
+    resp = requests.get(url, headers=_HEADERS, timeout=15)
+    resp.raise_for_status()
+    return pd.read_html(io.StringIO(resp.text))
+
 
 @lru_cache(maxsize=1)
 def get_sp500_tickers() -> list[str]:
     """Fetch S&P 500 tickers from Wikipedia."""
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    tables = pd.read_html(url)
+    tables = _read_html_with_headers(url)
     df = tables[0]
     tickers = df["Symbol"].str.replace(".", "-", regex=False).tolist()
     return sorted(set(tickers))
@@ -15,8 +25,7 @@ def get_sp500_tickers() -> list[str]:
 def get_nasdaq100_tickers() -> list[str]:
     """Fetch NASDAQ-100 tickers from Wikipedia."""
     url = "https://en.wikipedia.org/wiki/Nasdaq-100"
-    tables = pd.read_html(url)
-    # Find the table with a 'Ticker' column
+    tables = _read_html_with_headers(url)
     for table in tables:
         if "Ticker" in table.columns:
             tickers = table["Ticker"].str.replace(".", "-", regex=False).tolist()

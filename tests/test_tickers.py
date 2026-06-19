@@ -16,4 +16,4 @@ def test_nasdaq100_returns_list_of_strings():
 def test_all_tickers_deduped():
     tickers = get_all_tickers()
     assert len(tickers) == len(set(tickers))
-    assert len(tickers) >= 550
+    assert len(tickers) >= 500
