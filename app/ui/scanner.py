@@ -40,9 +40,11 @@ def render_scanner(scan_results: list[dict]):
         "score": "Score",
         "rsi": "RSI",
         "macd_signal": "MACD",
-        "ma_cross": "MA Cross",
         "bb_position": "Bollinger",
         "volume_ratio": "Vol Ratio",
+        "week52_pct": "52W Position",
+        "atr": "Daily Move ($)",
+        "days_to_earnings": "Earnings",
         "sentiment_label": "Sentiment",
         "sector": "Sector",
     }
@@ -58,9 +60,22 @@ def render_scanner(scan_results: list[dict]):
         display_df["RSI"] = display_df["RSI"].apply(lambda x: f"{x:.1f}")
     if "Vol Ratio" in display_df.columns:
         display_df["Vol Ratio"] = display_df["Vol Ratio"].apply(lambda x: f"{x:.1f}x")
+    if "52W Position" in display_df.columns:
+        display_df["52W Position"] = display_df["52W Position"].apply(
+            lambda x: f"{x:.0f}%" if pd.notna(x) else "N/A"
+        )
+    if "Daily Move ($)" in display_df.columns:
+        display_df["Daily Move ($)"] = display_df["Daily Move ($)"].apply(
+            lambda x: f"${x:.2f}" if pd.notna(x) else "N/A"
+        )
+    if "Earnings" in display_df.columns:
+        display_df["Earnings"] = display_df["Earnings"].apply(
+            lambda x: f"⚠️ {int(x)}d" if pd.notna(x) and x <= 14 else (f"{int(x)}d" if pd.notna(x) else "—")
+        )
 
     col_config = {}
     if "Score" in display_df.columns:
         col_config["Score"] = st.column_config.ProgressColumn("Score", min_value=0, max_value=100, format="%d")
 
+    st.caption("💡 Tip: Sort any column by clicking its header. Filter by sector or signal type above.")
     st.dataframe(display_df, use_container_width=True, hide_index=True, column_config=col_config)

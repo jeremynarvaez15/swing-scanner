@@ -10,6 +10,16 @@ def _score_color(score: int) -> str:
     return "#9E9E9E"
 
 
+def _verdict(score: int, days_to_earnings, sentiment_label: str) -> tuple[str, str, str]:
+    """Return (emoji, label, color) trade verdict."""
+    earnings_risk = days_to_earnings is not None and days_to_earnings <= 14
+    if score >= 70 and not earnings_risk and sentiment_label != "negative":
+        return "✅", "Looks Interesting", "#00C853"
+    if score <= 30 and not earnings_risk and sentiment_label != "positive":
+        return "❌", "Not Right Now", "#FF1744"
+    return "⚠️", "Use Caution", "#FF8800"
+
+
 def _mini_chart(history_df):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -30,6 +40,24 @@ def _mini_chart(history_df):
     return fig
 
 
+def _week52_bar(pct: float) -> str:
+    """Render a simple HTML progress bar showing 52-week position."""
+    filled = int(pct)
+    color = "#00C853" if pct <= 30 else ("#FF1744" if pct >= 70 else "#FF8800")
+    return (
+        f'<div style="margin:4px 0">'
+        f'<div style="font-size:11px;color:#aaa;margin-bottom:2px">'
+        f'52-Week Range &nbsp; <span style="color:#aaa">Low</span> '
+        f'<span style="float:right;color:#aaa">High</span></div>'
+        f'<div style="background:#333;border-radius:4px;height:8px;width:100%">'
+        f'<div style="background:{color};border-radius:4px;height:8px;width:{filled}%"></div>'
+        f'</div>'
+        f'<div style="font-size:11px;color:{color};text-align:center;margin-top:2px">'
+        f'{pct:.0f}% of yearly range</div>'
+        f'</div>'
+    )
+
+
 def render_watchlist(stocks: list[dict]):
     st.subheader("⭐ My Watchlist")
     if not stocks:
@@ -46,38 +74,115 @@ def render_watchlist(stocks: list[dict]):
             indicators = stock.get("indicators", {})
             sentiment = stock.get("sentiment", {})
             history_df = stock.get("history_df")
+            details = stock.get("details", {})
 
             color = _score_color(score)
             change_icon = "▲" if change_pct >= 0 else "▼"
             change_color = "#00C853" if change_pct >= 0 else "#FF1744"
+            sent_label = sentiment.get("sentiment_label", "neutral")
+            days_to_earnings = details.get("days_to_earnings")
 
+            # --- Header ---
             st.markdown(f"#### ${ticker}")
             st.markdown(
                 f'<span style="font-size:22px;font-weight:bold">${price:.2f}</span> '
                 f'<span style="color:{change_color}">{change_icon} {abs(change_pct):.2f}%</span>',
                 unsafe_allow_html=True,
             )
+
+            # --- Signal Score ---
             st.markdown(
                 f'<div style="background:{color};border-radius:8px;padding:4px 8px;'
                 f'display:inline-block;font-weight:bold;color:#000;margin:4px 0">Score: {score}</div>',
                 unsafe_allow_html=True,
             )
 
-            if history_df is not None and len(history_df) >= 30:
-                st.plotly_chart(_mini_chart(history_df), use_container_width=True)
-
-            rsi = indicators.get("rsi", 50)
-            rsi_color = "#FF1744" if rsi >= 70 else ("#00C853" if rsi <= 30 else "#9E9E9E")
+            # --- Verdict Box ---
+            verdict_emoji, verdict_label, verdict_color = _verdict(score, days_to_earnings, sent_label)
             st.markdown(
-                f'<span style="background:{rsi_color};border-radius:4px;padding:2px 6px;'
-                f'font-size:12px;color:#fff">RSI {rsi:.0f}</span>',
+                f'<div style="background:{verdict_color}22;border:1px solid {verdict_color};'
+                f'border-radius:8px;padding:6px 10px;margin:6px 0;text-align:center">'
+                f'<span style="font-size:18px">{verdict_emoji}</span> '
+                f'<span style="color:{verdict_color};font-weight:bold">{verdict_label}</span>'
+                f'</div>',
                 unsafe_allow_html=True,
             )
 
-            sent_label = sentiment.get("sentiment_label", "neutral")
-            st.caption(f"Sentiment: {sent_label.capitalize()}")
+            # --- Earnings Warning ---
+            if days_to_earnings is not None:
+                if days_to_earnings <= 7:
+                    st.markdown(
+                        f'<div style="background:#FF1744;border-radius:6px;padding:4px 8px;'
+                        f'color:#fff;font-size:12px;text-align:center">⚠️ Earnings in {days_to_earnings} days — HIGH RISK</div>',
+                        unsafe_allow_html=True,
+                    )
+                elif days_to_earnings <= 14:
+                    st.markdown(
+                        f'<div style="background:#FF8800;border-radius:6px;padding:4px 8px;'
+                        f'color:#fff;font-size:12px;text-align:center">⚠️ Earnings in {days_to_earnings} days — Use caution</div>',
+                        unsafe_allow_html=True,
+                    )
 
-            for h in sentiment.get("scored_headlines", [])[:3]:
+            # --- Mini Chart ---
+            if history_df is not None and len(history_df) >= 30:
+                st.plotly_chart(_mini_chart(history_df), use_container_width=True)
+
+            # --- 52-Week Bar ---
+            week52_pct = details.get("week52_pct")
+            if week52_pct is not None:
+                st.markdown(_week52_bar(week52_pct), unsafe_allow_html=True)
+
+            # --- Key Stats ---
+            atr = details.get("atr")
+            target_up = details.get("target_up")
+            target_down = details.get("target_down")
+
+            if atr:
+                st.markdown(
+                    f'<div style="font-size:12px;color:#aaa;margin:4px 0">'
+                    f'📏 Typical daily move: <b style="color:#fff">${atr:.2f}</b> '
+                    f'<span style="color:#666">— helps set stop-loss</span></div>',
+                    unsafe_allow_html=True,
+                )
+            if target_up and target_down:
+                st.markdown(
+                    f'<div style="font-size:12px;margin:4px 0">'
+                    f'🎯 <span style="color:#00C853">Upside target: ${target_up:.2f}</span> &nbsp;|&nbsp; '
+                    f'<span style="color:#FF1744">Downside risk: ${target_down:.2f}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+            # --- Indicators ---
+            rsi = indicators.get("rsi", 50)
+            rsi_color = "#FF1744" if rsi >= 70 else ("#00C853" if rsi <= 30 else "#9E9E9E")
+            rsi_tip = "Oversold — may bounce up 🟢" if rsi <= 30 else ("Overbought — may pull back 🔴" if rsi >= 70 else "Neutral ⚪")
+            macd = indicators.get("macd_signal", "neutral")
+            macd_tip = {"bullish": "Momentum building up 🟢", "bearish": "Momentum fading 🔴", "neutral": "No clear momentum ⚪"}.get(macd, "")
+
+            st.markdown(
+                f'<div style="margin:6px 0">'
+                f'<span title="RSI measures if stock is overbought or oversold" '
+                f'style="background:{rsi_color};border-radius:4px;padding:2px 6px;font-size:11px;color:#fff;margin-right:4px">'
+                f'RSI {rsi:.0f}</span>'
+                f'<span style="font-size:11px;color:#aaa">{rsi_tip}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<div style="font-size:11px;color:#aaa;margin:2px 0">'
+                f'📊 MACD: {macd_tip}</div>',
+                unsafe_allow_html=True,
+            )
+
+            # --- Sentiment ---
+            sent_color = "#00C853" if sent_label == "positive" else ("#FF1744" if sent_label == "negative" else "#9E9E9E")
+            st.markdown(
+                f'<div style="font-size:12px;margin:4px 0">'
+                f'📰 News sentiment: <span style="color:{sent_color};font-weight:bold">{sent_label.capitalize()}</span></div>',
+                unsafe_allow_html=True,
+            )
+
+            for h in sentiment.get("scored_headlines", [])[:2]:
                 icon = "🟢" if h.get("label") == "positive" else ("🔴" if h.get("label") == "negative" else "⚪")
                 title = h.get("title", "")
-                st.caption(f"{icon} {title[:75]}{'...' if len(title) > 75 else ''}")
+                st.caption(f"{icon} {title[:70]}{'...' if len(title) > 70 else ''}")

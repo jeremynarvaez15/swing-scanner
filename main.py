@@ -5,7 +5,7 @@ import pytz
 
 from app.config import load_config, get_twilio_cfg
 from app.data.tickers import get_all_tickers
-from app.data.price_fetcher import fetch_price_data, get_current_price
+from app.data.price_fetcher import fetch_price_data, get_current_price, get_stock_details
 from app.data.news_fetcher import fetch_news
 from app.data.reddit_fetcher import fetch_reddit_mentions
 from app.data.fear_greed import fetch_fear_greed
@@ -60,7 +60,7 @@ def load_all_data(watchlist: tuple, _cache_buster: int):
     return price_data, news_data, reddit_data, fear_greed
 
 
-def _build_stock_record(ticker: str, price_data: dict, news_data: dict) -> dict | None:
+def _build_stock_record(ticker: str, price_data: dict, news_data: dict, fetch_details: bool = False) -> dict | None:
     df = price_data.get(ticker)
     if df is None or len(df) < 30:
         return None
@@ -70,6 +70,7 @@ def _build_stock_record(ticker: str, price_data: dict, news_data: dict) -> dict 
         sentiment = score_sentiment(headlines)
         score = calculate_score(indicators, sentiment["sentiment_score"])
         price_info = get_current_price(ticker)
+        details = get_stock_details(ticker, df) if fetch_details else {}
         return {
             "ticker": ticker,
             "price": price_info["price"],
@@ -79,11 +80,15 @@ def _build_stock_record(ticker: str, price_data: dict, news_data: dict) -> dict 
             "indicators": indicators,
             "sentiment": sentiment,
             "history_df": df,
+            "details": details,
             **indicators,
             "sentiment_score": sentiment["sentiment_score"],
             "sentiment_label": sentiment["sentiment_label"],
             "news_surge": sentiment["surge"],
-            "sector": "N/A",
+            "week52_pct": details.get("week52_pct"),
+            "atr": details.get("atr"),
+            "days_to_earnings": details.get("days_to_earnings"),
+            "sector": details.get("sector", "N/A"),
             "company": ticker,
         }
     except Exception:
@@ -208,7 +213,7 @@ def main():
 
     watchlist_stocks = []
     for ticker in config["watchlist"]:
-        record = _build_stock_record(ticker, price_data, news_data)
+        record = _build_stock_record(ticker, price_data, news_data, fetch_details=True)
         if record:
             watchlist_stocks.append(record)
 
