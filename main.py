@@ -90,14 +90,112 @@ def _build_stock_record(ticker: str, price_data: dict, news_data: dict) -> dict 
         return None
 
 
+def _render_how_to_use():
+    with st.expander("❓ How to Use This App", expanded=False):
+        st.markdown("""
+### What is this?
+This tool scans the S&P 500 and NASDAQ-100 (600+ stocks) for **swing trade opportunities** — stocks that technical indicators and news sentiment suggest may be about to move up or down in price over the next few days to weeks.
+
+---
+
+### Signal Score (0–100)
+Every stock gets a **Signal Score** — the most important number in the app.
+
+| Score | Color | Meaning |
+|---|---|---|
+| **70–100** | 🟢 Green | **BUY signal** — multiple indicators suggest the stock may rise |
+| **31–69** | ⚪ Gray | **Neutral** — no clear signal, wait and watch |
+| **0–30** | 🔴 Red | **SELL signal** — multiple indicators suggest the stock may fall |
+
+---
+
+### What the Indicators Mean
+
+**RSI (Relative Strength Index)**
+Measures if a stock is overbought or oversold.
+- Below 30 = oversold (possible buy opportunity)
+- Above 70 = overbought (possible sell opportunity)
+
+**MACD**
+Compares two moving averages to detect momentum shifts.
+- Bullish = upward momentum building
+- Bearish = downward momentum building
+
+**MA Cross (Moving Average Crossover)**
+Compares the 50-day and 200-day average prices.
+- Golden Cross = 50-day crosses above 200-day (bullish long-term signal)
+- Death Cross = 50-day crosses below 200-day (bearish long-term signal)
+
+**Bollinger Bands**
+Shows if a stock price is unusually high or low relative to recent history.
+- Near lower band = price may be due to bounce up
+- Near upper band = price may be due to pull back
+
+**Volume Ratio**
+Compares today's trading volume to the 30-day average.
+- Above 1.5x = unusual activity (confirms signals)
+
+**Sentiment**
+Analyzes recent news headlines from CNBC, Reuters, MarketWatch and others.
+- Positive = good news surrounding the stock
+- Negative = bad news surrounding the stock
+
+---
+
+### My Watchlist
+Your 5 personal stocks always appear at the top with detailed charts and headlines. Add them in ⚙️ Settings.
+
+### Market Scanner Table
+All 600+ stocks ranked by Signal Score. Use the filters to find:
+- Only BUY signals (score ≥ 70)
+- Only a specific sector
+- Stocks with unusual volume
+
+### SMS Alerts
+Configure your phone number and alert thresholds in ⚙️ Settings to receive a text when any stock hits your buy or sell threshold.
+
+### Market Mood (Sidebar)
+- **CNN Fear & Greed Index**: Overall market sentiment (0 = Extreme Fear, 100 = Extreme Greed). Best buying opportunities often appear during Extreme Fear.
+- **Reddit Trending**: Stocks getting unusual attention on Reddit's investing communities.
+
+---
+*Data refreshes every 15 minutes during market hours (9:30am–4:00pm ET, Mon–Fri).*
+        """)
+
+
 def main():
     st.title("📈 Swing Trade Scanner")
+    _render_how_to_use()
     render_settings()
 
     if _is_market_open():
         st.success("🟢 Market Open — data refreshes every 15 minutes")
     else:
         st.warning("🔴 Market Closed — showing last session data")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+        <div style="background:#00C853;border-radius:10px;padding:12px;text-align:center">
+        <span style="font-size:24px;font-weight:bold;color:#000">70–100</span><br>
+        <span style="color:#000;font-size:14px">🟢 BUY Signal — consider entering a position</span>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div style="background:#424242;border-radius:10px;padding:12px;text-align:center">
+        <span style="font-size:24px;font-weight:bold;color:#fff">31–69</span><br>
+        <span style="color:#fff;font-size:14px">⚪ Neutral — wait for a clearer signal</span>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+        <div style="background:#FF1744;border-radius:10px;padding:12px;text-align:center">
+        <span style="font-size:24px;font-weight:bold;color:#fff">0–30</span><br>
+        <span style="color:#fff;font-size:14px">🔴 SELL Signal — consider exiting a position</span>
+        </div>
+        """, unsafe_allow_html=True)
+    st.caption("Signal Score combines RSI, MACD, Moving Averages, Bollinger Bands, Volume, and News Sentiment into one number.")
 
     config = load_config()
     cache_buster = int(time.time() // _REFRESH_INTERVAL)
