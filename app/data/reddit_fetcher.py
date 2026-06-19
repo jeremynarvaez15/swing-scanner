@@ -1,5 +1,8 @@
 import praw
 from datetime import datetime, timezone
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+_analyzer = SentimentIntensityAnalyzer()
 
 
 def fetch_reddit_mentions(
@@ -7,14 +10,14 @@ def fetch_reddit_mentions(
     client_id: str,
     client_secret: str,
     user_agent: str,
-) -> dict[str, int]:
+) -> dict[str, dict]:
     """
     Count ticker mentions in WSB + investing subreddits over last 24h.
-    Returns dict: ticker -> mention count.
+    Returns dict: ticker -> {"count": int, "sentiment": "positive"|"negative"|"neutral", "score": float}
     """
-    counts = {t: 0 for t in tickers}
+    results = {t: {"count": 0, "sentiment": "neutral", "score": 0.0, "snippets": []} for t in tickers}
     if not client_id or not client_secret:
-        return counts
+        return results
 
     try:
         reddit = praw.Reddit(
@@ -31,13 +34,30 @@ def fetch_reddit_mentions(
                 for post in sub.new(limit=200):
                     if post.created_utc < cutoff:
                         break
-                    text = f"{post.title} {post.selftext}".upper()
+                    text = f"{post.title} {post.selftext}"
+                    text_upper = text.upper()
                     for ticker in ticker_set:
-                        if f" {ticker} " in f" {text} " or f"${ticker}" in text:
-                            counts[ticker] += 1
+                        if f" {ticker} " in f" {text_upper} " or f"${ticker}" in text_upper:
+                            results[ticker]["count"] += 1
+                            results[ticker]["snippets"].append(post.title)
             except Exception:
                 continue
+
+        # Score sentiment for each ticker based on collected post titles
+        for ticker in tickers:
+            snippets = results[ticker]["snippets"]
+            if snippets:
+                scores = [_analyzer.polarity_scores(s)["compound"] for s in snippets]
+                avg = sum(scores) / len(scores)
+                results[ticker]["score"] = round(avg, 3)
+                if avg >= 0.05:
+                    results[ticker]["sentiment"] = "positive"
+                elif avg <= -0.05:
+                    results[ticker]["sentiment"] = "negative"
+                else:
+                    results[ticker]["sentiment"] = "neutral"
+
     except Exception:
         pass
 
-    return counts
+    return results
