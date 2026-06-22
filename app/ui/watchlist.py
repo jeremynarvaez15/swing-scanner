@@ -1,5 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
+from app.ui.tooltip import ticker_tooltip
 
 
 def _score_color(score: int) -> str:
@@ -83,7 +84,13 @@ def render_watchlist(stocks: list[dict]):
             days_to_earnings = details.get("days_to_earnings")
 
             # --- Header ---
-            st.markdown(f"#### ${ticker}")
+            ma_20 = indicators.get("ma_20")
+            ma_50 = indicators.get("ma_50")
+            ma_200 = indicators.get("ma_200")
+            st.markdown(
+                f'<h4>{ticker_tooltip(ticker, ma_20, ma_50, ma_200, price)}</h4>',
+                unsafe_allow_html=True,
+            )
             st.markdown(
                 f'<span style="font-size:22px;font-weight:bold">${price:.2f}</span> '
                 f'<span style="color:{change_color}">{change_icon} {abs(change_pct):.2f}%</span>',

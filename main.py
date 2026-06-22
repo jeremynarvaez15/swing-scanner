@@ -85,6 +85,7 @@ def _build_stock_record(ticker: str, price_data: dict, news_data: dict, fetch_de
             "sentiment_score": sentiment["sentiment_score"],
             "sentiment_label": sentiment["sentiment_label"],
             "news_surge": sentiment["surge"],
+            "ma_20": indicators.get("ma_20"),
             "week52_pct": details.get("week52_pct"),
             "atr": details.get("atr"),
             "days_to_earnings": details.get("days_to_earnings"),

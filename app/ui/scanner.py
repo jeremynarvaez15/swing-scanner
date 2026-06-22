@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from app.ui.tooltip import ticker_tooltip
 
 
 def render_scanner(scan_results: list[dict]):
@@ -33,13 +34,27 @@ def render_scanner(scan_results: list[dict]):
     filtered = filtered.sort_values("score", ascending=False)
     st.caption(f"Showing {len(filtered)} of {len(df)} stocks")
 
+    # Add hover tooltip column for ticker
+    if "ma_20" in filtered.columns:
+        filtered["Ticker"] = filtered.apply(
+            lambda r: ticker_tooltip(
+                r["ticker"],
+                r.get("ma_20"), r.get("ma_50"), r.get("ma_200"), r.get("price")
+            ), axis=1
+        )
+    else:
+        filtered["Ticker"] = filtered["ticker"].apply(lambda t: f"${t}")
+
     display_cols = {
-        "ticker": "Ticker",
+        "Ticker": "Ticker",
         "price": "Price",
         "change_pct": "Day %",
         "score": "Score",
         "rsi": "RSI",
         "macd_signal": "MACD",
+        "ma_20": "MA20",
+        "ma_50": "MA50",
+        "ma_200": "MA200",
         "bb_position": "Bollinger",
         "volume_ratio": "Vol Ratio",
         "week52_pct": "52W Position",
@@ -50,7 +65,8 @@ def render_scanner(scan_results: list[dict]):
     }
 
     available = [c for c in display_cols if c in filtered.columns]
-    display_df = filtered[available].rename(columns={k: v for k, v in display_cols.items() if k in available})
+    display_df = filtered[available].copy()
+    display_df = display_df.rename(columns={k: v for k, v in display_cols.items() if k in available})
 
     if "Price" in display_df.columns:
         display_df["Price"] = display_df["Price"].apply(lambda x: f"${x:.2f}")
@@ -58,6 +74,11 @@ def render_scanner(scan_results: list[dict]):
         display_df["Day %"] = display_df["Day %"].apply(lambda x: f"{x:+.2f}%")
     if "RSI" in display_df.columns:
         display_df["RSI"] = display_df["RSI"].apply(lambda x: f"{x:.1f}")
+    for ma_col in ["MA20", "MA50", "MA200"]:
+        if ma_col in display_df.columns:
+            display_df[ma_col] = display_df[ma_col].apply(
+                lambda x: f"${x:.2f}" if pd.notna(x) and x == x else "N/A"
+            )
     if "Vol Ratio" in display_df.columns:
         display_df["Vol Ratio"] = display_df["Vol Ratio"].apply(lambda x: f"{x:.1f}x")
     if "52W Position" in display_df.columns:

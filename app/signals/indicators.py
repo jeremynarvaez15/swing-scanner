@@ -89,11 +89,13 @@ def calculate_indicators(df: pd.DataFrame) -> dict:
     bb_position = _bollinger_position(close)
     volume_surge, volume_ratio = _volume_metrics(volume)
     near_support, near_resistance = _support_resistance(close)
+    ma_20 = round(float(close.rolling(20).mean().iloc[-1]), 2) if len(close) >= 20 else round(float(close.mean()), 2)
 
     return {
         "rsi": rsi,
         "macd_signal": macd_signal,
         "ma_cross": ma_cross,
+        "ma_20": ma_20,
         "ma_50": ma_50,
         "ma_200": ma_200,
         "bb_position": bb_position,
