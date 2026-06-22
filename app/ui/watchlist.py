@@ -87,10 +87,7 @@ def render_watchlist(stocks: list[dict]):
             ma_20 = indicators.get("ma_20")
             ma_50 = indicators.get("ma_50")
             ma_200 = indicators.get("ma_200")
-            st.markdown(
-                f'<h4>{ticker_tooltip(ticker, ma_20, ma_50, ma_200, price)}</h4>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"#### ${ticker}")
             st.markdown(
                 f'<span style="font-size:22px;font-weight:bold">${price:.2f}</span> '
                 f'<span style="color:{change_color}">{change_icon} {abs(change_pct):.2f}%</span>',
@@ -156,6 +153,37 @@ def render_watchlist(stocks: list[dict]):
                     f'<div style="font-size:12px;margin:4px 0">'
                     f'🎯 <span style="color:#00C853">Upside target: ${target_up:.2f}</span> &nbsp;|&nbsp; '
                     f'<span style="color:#FF1744">Downside risk: ${target_down:.2f}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+            # --- Moving Averages ---
+            if ma_20 or ma_50 or ma_200:
+                def _ma_color(ma_val):
+                    if not ma_val or not price:
+                        return "#9E9E9E"
+                    return "#00C853" if price > ma_val else "#FF1744"
+
+                st.markdown(
+                    f'<div style="background:#1E2130;border-radius:8px;padding:8px;margin:6px 0">'
+                    f'<div style="font-size:11px;color:#aaa;margin-bottom:4px">📉 Moving Averages '
+                    f'<span style="color:#555">(hover = price above/below MA)</span></div>'
+                    f'<div style="display:flex;justify-content:space-between">'
+                    + (f'<div style="text-align:center">'
+                       f'<div style="font-size:10px;color:#aaa">20-Day</div>'
+                       f'<div style="font-size:13px;font-weight:bold;color:{_ma_color(ma_20)}">${ma_20:.2f}</div>'
+                       f'<div style="font-size:10px;color:{_ma_color(ma_20)}">{"▲ Above" if price and price > ma_20 else "▼ Below"}</div>'
+                       f'</div>' if ma_20 else '')
+                    + (f'<div style="text-align:center">'
+                       f'<div style="font-size:10px;color:#aaa">50-Day</div>'
+                       f'<div style="font-size:13px;font-weight:bold;color:{_ma_color(ma_50)}">${ma_50:.2f}</div>'
+                       f'<div style="font-size:10px;color:{_ma_color(ma_50)}">{"▲ Above" if price and price > ma_50 else "▼ Below"}</div>'
+                       f'</div>' if ma_50 else '')
+                    + (f'<div style="text-align:center">'
+                       f'<div style="font-size:10px;color:#aaa">200-Day</div>'
+                       f'<div style="font-size:13px;font-weight:bold;color:{_ma_color(ma_200)}">${ma_200:.2f}</div>'
+                       f'<div style="font-size:10px;color:{_ma_color(ma_200)}">{"▲ Above" if price and price > ma_200 else "▼ Below"}</div>'
+                       f'</div>' if ma_200 else '')
+                    + f'</div></div>',
                     unsafe_allow_html=True,
                 )
 
