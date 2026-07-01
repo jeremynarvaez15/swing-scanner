@@ -7,7 +7,7 @@ from app.config import load_config, get_twilio_cfg
 from app.data.tickers import get_all_tickers
 from app.data.price_fetcher import fetch_price_data, get_current_price, get_stock_details
 from app.data.news_fetcher import fetch_news
-from app.data.reddit_fetcher import fetch_reddit_mentions
+from app.data.stocktwits_fetcher import fetch_stocktwits_trending
 from app.data.fear_greed import fetch_fear_greed
 from app.signals.indicators import calculate_indicators
 from app.signals.sentiment import score_sentiment
@@ -45,18 +45,13 @@ def load_all_data(watchlist: tuple, _cache_buster: int):
     news_api_key = st.secrets.get("NEWS_API_KEY", "")
     news_data = fetch_news(list(watchlist), news_api_key) if news_api_key else {}
 
-    reddit_data = {}
+    stocktwits_data = []
     try:
-        reddit_data = fetch_reddit_mentions(
-            list(watchlist),
-            client_id=st.secrets.get("REDDIT_CLIENT_ID", ""),
-            client_secret=st.secrets.get("REDDIT_CLIENT_SECRET", ""),
-            user_agent=st.secrets.get("REDDIT_USER_AGENT", "SwingScanner/1.0"),
-        )
+        stocktwits_data = fetch_stocktwits_trending()
     except Exception:
         pass
 
-    return price_data, news_data, reddit_data
+    return price_data, news_data, stocktwits_data
 
 
 @st.cache_data(ttl=3600)
@@ -166,7 +161,7 @@ Configure your phone number and alert thresholds in ⚙️ Settings to receive a
 
 ### Market Mood (Sidebar)
 - **CNN Fear & Greed Index**: Overall market sentiment (0 = Extreme Fear, 100 = Extreme Greed). Best buying opportunities often appear during Extreme Fear.
-- **Reddit Trending**: Stocks getting unusual attention on Reddit's investing communities.
+- **StockTwits Trending**: Stocks being most watched and discussed by active traders right now, with bullish/bearish sentiment.
 
 ---
 *Data refreshes every 15 minutes during market hours (9:30am–4:00pm ET, Mon–Fri).*
@@ -212,10 +207,10 @@ def main():
     watchlist_tuple = tuple(config["watchlist"])
 
     with st.spinner("Loading market data (this may take 30-60 seconds on first load)..."):
-        price_data, news_data, reddit_data = load_all_data(watchlist_tuple, cache_buster)
+        price_data, news_data, stocktwits_data = load_all_data(watchlist_tuple, cache_buster)
 
     fear_greed = load_fear_greed()
-    render_sidebar(fear_greed, reddit_data)
+    render_sidebar(fear_greed, stocktwits_data)
 
     watchlist_stocks = []
     for ticker in config["watchlist"]:

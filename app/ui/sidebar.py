@@ -29,7 +29,7 @@ _SENTIMENT_ICON = {
 }
 
 
-def render_sidebar(fear_greed_data: dict, reddit_data: dict):
+def render_sidebar(fear_greed_data: dict, stocktwits_data: list):
     with st.sidebar:
         st.title("📊 Market Mood")
         st.caption("How is the overall market feeling right now?")
@@ -40,7 +40,7 @@ def render_sidebar(fear_greed_data: dict, reddit_data: dict):
         color = _FG_COLORS.get(label, "#FFCC00")
         meaning = _FG_MEANING.get(label, "")
 
-        st.markdown("### CNN Fear & Greed Index")
+        st.markdown("### Fear & Greed Index")
         st.markdown(
             f'<div style="font-size:52px;font-weight:bold;color:{color};text-align:center">{score}</div>',
             unsafe_allow_html=True,
@@ -76,68 +76,52 @@ def render_sidebar(fear_greed_data: dict, reddit_data: dict):
 
         st.divider()
 
-        # --- Reddit Trending ---
-        st.markdown("### 🔥 Reddit Trending (24h)")
-        st.caption("Stocks being talked about most by everyday investors on Reddit.")
+        # --- StockTwits Trending ---
+        st.markdown("### 🔥 StockTwits Trending")
+        st.caption("Stocks traders are buzzing about right now.")
 
-        # Handle both old format (int) and new format (dict)
-        has_sentiment = any(isinstance(v, dict) for v in reddit_data.values()) if reddit_data else False
+        if stocktwits_data:
+            max_watchers = max((s.get("watchers", 1) for s in stocktwits_data), default=1)
+            for stock in stocktwits_data[:10]:
+                ticker = stock["ticker"]
+                sentiment = stock.get("sentiment", "neutral")
+                bullish_pct = stock.get("bullish_pct", 50)
+                watchers = stock.get("watchers", 0)
+                sent_color = _SENTIMENT_COLOR[sentiment]
+                sent_icon = _SENTIMENT_ICON[sentiment]
+                bar_width = min(100, int(watchers / max_watchers * 100))
 
-        if reddit_data and has_sentiment:
-            sorted_mentions = sorted(
-                [(t, d) for t, d in reddit_data.items() if isinstance(d, dict) and d.get("count", 0) > 0],
-                key=lambda x: x[1]["count"],
-                reverse=True,
-            )[:10]
-
-            if sorted_mentions:
-                for ticker, data in sorted_mentions:
-                    count = data["count"]
-                    sentiment = data.get("sentiment", "neutral")
-                    sent_color = _SENTIMENT_COLOR[sentiment]
-                    sent_icon = _SENTIMENT_ICON[sentiment]
-                    bar_width = min(100, int(count / max(sorted_mentions[0][1]["count"], 1) * 100))
-
-                    st.markdown(
-                        f'<div style="margin:6px 0;padding:6px 8px;background:#1E2130;border-radius:8px;'
-                        f'border-left:3px solid {sent_color}">'
-                        f'<div style="display:flex;justify-content:space-between;align-items:center">'
-                        f'<span style="font-weight:bold;color:#fff">${ticker}</span>'
-                        f'<span style="font-size:11px;color:{sent_color}">{sent_icon} {sentiment.capitalize()}</span>'
-                        f'</div>'
-                        f'<div style="font-size:11px;color:#aaa">{count} mention{"s" if count != 1 else ""}</div>'
-                        f'<div style="background:#333;border-radius:3px;height:4px;margin-top:4px">'
-                        f'<div style="background:{sent_color};border-radius:3px;height:4px;width:{bar_width}%"></div>'
-                        f'</div>'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
-            else:
-                st.caption("No trending stocks found in the last 24 hours.")
-
-        elif reddit_data and not has_sentiment:
-            # Fallback for old int format
-            sorted_mentions = sorted(
-                [(t, c) for t, c in reddit_data.items() if isinstance(c, int) and c > 0],
-                key=lambda x: x[1], reverse=True
-            )[:10]
-            for ticker, count in sorted_mentions:
-                st.markdown(f"**${ticker}** — {count} mentions")
+                st.markdown(
+                    f'<div style="margin:6px 0;padding:6px 8px;background:#1E2130;border-radius:8px;'
+                    f'border-left:3px solid {sent_color}">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center">'
+                    f'<span style="font-weight:bold;color:#fff">${ticker}</span>'
+                    f'<span style="font-size:11px;color:{sent_color}">{sent_icon} {bullish_pct}% bullish</span>'
+                    f'</div>'
+                    f'<div style="font-size:11px;color:#aaa">{watchers:,} watchers</div>'
+                    f'<div style="background:#333;border-radius:3px;height:4px;margin-top:4px">'
+                    f'<div style="background:{sent_color};border-radius:3px;height:4px;width:{bar_width}%"></div>'
+                    f'</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
         else:
-            st.caption("No Reddit data available. Add Reddit API credentials in Settings to enable this.")
+            st.caption("Unable to load StockTwits data. Please try refreshing.")
 
-        with st.expander("❓ What is Reddit Trending?"):
+        with st.expander("❓ What is StockTwits Trending?"):
             st.markdown("""
-Reddit is a popular website where millions of people discuss stocks in communities like **WallStreetBets**, **r/investing**, and **r/stocks**.
+**StockTwits** is a social network specifically for traders and investors — like Twitter but only for stocks. Millions of traders post their opinions, trades, and analysis there every day.
 
-This section shows which stocks are being talked about the most in the last 24 hours — and whether the conversation is **positive** (people are excited/bullish) or **negative** (people are worried/bearish).
+This section shows the **most-watched stocks** on StockTwits right now, along with how traders are feeling about them.
 
 **Why does it matter?**
-When a stock suddenly gets a lot of attention on Reddit, it can signal that something is happening — breaking news, a big price move, or growing excitement. Combined with the Signal Score, it helps confirm whether a trade idea has momentum behind it.
+When a stock is trending on StockTwits, it means active traders are paying attention to it. Combined with the Signal Score, it helps confirm whether a trade idea has real momentum behind it.
 
-🟢 **Positive** — People are excited, bullish, expecting it to go up
+🟢 **Bullish (60%+)** — Most traders expect the stock to go up
 
-🔴 **Negative** — People are worried, bearish, expecting it to go down
+🔴 **Bearish (40% or less bullish)** — Most traders expect the stock to go down
 
-⚪ **Neutral** — Mixed or factual discussion, no clear direction
+⚪ **Neutral (40–60%)** — Traders are split, no clear direction
+
+The **% bullish** number shows exactly how many traders are feeling positive vs. negative.
             """)
