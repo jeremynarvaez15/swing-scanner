@@ -55,6 +55,9 @@ def render_sidebar(fear_greed_data: dict, reddit_data: dict):
             f'{meaning}</div>',
             unsafe_allow_html=True,
         )
+        source = fear_greed_data.get("source", "")
+        if source:
+            st.caption(f"Source: {source}")
 
         with st.expander("❓ What does this mean?"):
             st.markdown("""

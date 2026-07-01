@@ -56,8 +56,12 @@ def load_all_data(watchlist: tuple, _cache_buster: int):
     except Exception:
         pass
 
-    fear_greed = fetch_fear_greed()
-    return price_data, news_data, reddit_data, fear_greed
+    return price_data, news_data, reddit_data
+
+
+@st.cache_data(ttl=3600)
+def load_fear_greed():
+    return fetch_fear_greed()
 
 
 def _build_stock_record(ticker: str, price_data: dict, news_data: dict, fetch_details: bool = False) -> dict | None:
@@ -208,8 +212,9 @@ def main():
     watchlist_tuple = tuple(config["watchlist"])
 
     with st.spinner("Loading market data (this may take 30-60 seconds on first load)..."):
-        price_data, news_data, reddit_data, fear_greed = load_all_data(watchlist_tuple, cache_buster)
+        price_data, news_data, reddit_data = load_all_data(watchlist_tuple, cache_buster)
 
+    fear_greed = load_fear_greed()
     render_sidebar(fear_greed, reddit_data)
 
     watchlist_stocks = []
