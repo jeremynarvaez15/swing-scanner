@@ -49,16 +49,17 @@ def render_scanner(scan_results: list[dict]):
         "Ticker": "Ticker",
         "price": "Price",
         "change_pct": "Day %",
-        "score": "Score",
+        "score": "Setup Score",
+        "bb_squeeze": "Squeeze",
+        "obv_trend": "OBV",
+        "rs_vs_spy": "RS vs SPY",
         "rsi": "RSI",
         "macd_signal": "MACD",
         "ma_20": "MA20",
         "ma_50": "MA50",
         "ma_200": "MA200",
-        "bb_position": "Bollinger",
         "volume_ratio": "Vol Ratio",
         "week52_pct": "52W Position",
-        "atr": "Daily Move ($)",
         "days_to_earnings": "Earnings",
         "sentiment_label": "Sentiment",
         "sector": "Sector",
@@ -67,6 +68,19 @@ def render_scanner(scan_results: list[dict]):
     available = [c for c in display_cols if c in filtered.columns]
     display_df = filtered[available].copy()
     display_df = display_df.rename(columns={k: v for k, v in display_cols.items() if k in available})
+
+    if "Squeeze" in display_df.columns:
+        display_df["Squeeze"] = display_df["Squeeze"].apply(
+            lambda x: "🔥 Yes" if x else "—"
+        )
+    if "OBV" in display_df.columns:
+        display_df["OBV"] = display_df["OBV"].apply(
+            lambda x: {"accumulating": "📈 Accum.", "distributing": "📉 Dist.", "neutral": "—"}.get(str(x), "—")
+        )
+    if "RS vs SPY" in display_df.columns:
+        display_df["RS vs SPY"] = display_df["RS vs SPY"].apply(
+            lambda x: f"+{x:.1f}%" if pd.notna(x) and x >= 0 else (f"{x:.1f}%" if pd.notna(x) else "—")
+        )
 
     if "Price" in display_df.columns:
         display_df["Price"] = display_df["Price"].apply(lambda x: f"${x:.2f}")
@@ -95,8 +109,8 @@ def render_scanner(scan_results: list[dict]):
         )
 
     col_config = {}
-    if "Score" in display_df.columns:
-        col_config["Score"] = st.column_config.ProgressColumn("Score", min_value=0, max_value=100, format="%d")
+    if "Setup Score" in display_df.columns:
+        col_config["Setup Score"] = st.column_config.ProgressColumn("Setup Score", min_value=0, max_value=100, format="%d")
 
     st.caption("💡 Tip: Sort any column by clicking its header. Filter by sector or signal type above.")
     st.dataframe(display_df, use_container_width=True, hide_index=True, column_config=col_config)
