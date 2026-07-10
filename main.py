@@ -51,7 +51,7 @@ def load_all_data(watchlist: tuple, _cache_buster: int):
     except Exception:
         pass
 
-    return price_data, news_data, stocktwits_data
+    return price_data, news_data, stocktwits_data, spy_df
 
 
 @st.cache_data(ttl=3600)
@@ -59,12 +59,13 @@ def load_fear_greed():
     return fetch_fear_greed()
 
 
-def _build_stock_record(ticker: str, price_data: dict, news_data: dict, fetch_details: bool = False) -> dict | None:
+def _build_stock_record(ticker: str, price_data: dict, news_data: dict,
+                         spy_df=None, fetch_details: bool = False) -> dict | None:
     df = price_data.get(ticker)
     if df is None or len(df) < 30:
         return None
     try:
-        indicators = calculate_indicators(df)
+        indicators = calculate_indicators(df, spy_df)
         headlines = news_data.get(ticker, [])
         sentiment = score_sentiment(headlines)
         score = calculate_score(indicators, sentiment["sentiment_score"])
@@ -90,6 +91,8 @@ def _build_stock_record(ticker: str, price_data: dict, news_data: dict, fetch_de
             "days_to_earnings": details.get("days_to_earnings"),
             "sector": details.get("sector", "N/A"),
             "company": ticker,
+            "short_pct": details.get("short_pct"),
+            "short_ratio": details.get("short_ratio"),
         }
     except Exception:
         return None
@@ -160,8 +163,11 @@ All 600+ stocks ranked by Signal Score. Use the filters to find:
 Configure your phone number and alert thresholds in ⚙️ Settings to receive a text when any stock hits your buy or sell threshold.
 
 ### Market Mood (Sidebar)
-- **CNN Fear & Greed Index**: Overall market sentiment (0 = Extreme Fear, 100 = Extreme Greed). Best buying opportunities often appear during Extreme Fear.
+- **Fear & Greed Index**: Overall market sentiment (0 = Extreme Fear, 100 = Extreme Greed). Best buying opportunities often appear during Extreme Fear.
 - **StockTwits Trending**: Stocks being most watched and discussed by active traders right now, with bullish/bearish sentiment.
+
+### Early Signals Tab
+Stocks that are simultaneously **coiling** (Bollinger squeeze), **accumulating** (OBV rising), and **leading the market** (outperforming SPY). This is your daily shortlist of potential breakout candidates.
 
 ---
 *Data refreshes every 15 minutes during market hours (9:30am–4:00pm ET, Mon–Fri).*
@@ -207,14 +213,14 @@ def main():
     watchlist_tuple = tuple(config["watchlist"])
 
     with st.spinner("Loading market data (this may take 30-60 seconds on first load)..."):
-        price_data, news_data, stocktwits_data = load_all_data(watchlist_tuple, cache_buster)
+        price_data, news_data, stocktwits_data, spy_df = load_all_data(watchlist_tuple, cache_buster)
 
     fear_greed = load_fear_greed()
     render_sidebar(fear_greed, stocktwits_data)
 
     watchlist_stocks = []
     for ticker in config["watchlist"]:
-        record = _build_stock_record(ticker, price_data, news_data, fetch_details=True)
+        record = _build_stock_record(ticker, price_data, news_data, spy_df=spy_df, fetch_details=True)
         if record:
             watchlist_stocks.append(record)
 
@@ -225,14 +231,19 @@ def main():
     all_tickers = list(price_data.keys())
     progress = st.progress(0, text="Building signal scores...")
     for i, ticker in enumerate(all_tickers):
-        record = _build_stock_record(ticker, price_data, news_data)
+        record = _build_stock_record(ticker, price_data, news_data, spy_df=spy_df)
         if record:
             scan_results.append(record)
         if (i + 1) % 10 == 0:
             progress.progress((i + 1) / len(all_tickers))
     progress.empty()
 
-    render_scanner(scan_results)
+    tab1, tab2 = st.tabs(["📊 Market Scanner", "🔥 Early Signals"])
+    with tab1:
+        render_scanner(scan_results)
+    with tab2:
+        from app.ui.early_signals import render_early_signals
+        render_early_signals(scan_results)
 
     if "cooldowns" not in st.session_state:
         st.session_state["cooldowns"] = {}
