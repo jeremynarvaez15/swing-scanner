@@ -2,12 +2,14 @@ import pandas as pd
 from app.data.price_fetcher import fetch_price_data, get_current_price
 
 def test_fetch_price_data_returns_dataframe():
-    data = fetch_price_data(["AAPL", "MSFT"])
+    data, spy_df = fetch_price_data(["AAPL", "MSFT"])
     assert "AAPL" in data
     assert isinstance(data["AAPL"], pd.DataFrame)
     assert len(data["AAPL"]) >= 200
     for col in ["Open", "High", "Low", "Close", "Volume"]:
         assert col in data["AAPL"].columns
+    assert isinstance(spy_df, pd.DataFrame)
+    assert len(spy_df) >= 200
 
 def test_get_current_price_returns_dict():
     result = get_current_price("AAPL")
