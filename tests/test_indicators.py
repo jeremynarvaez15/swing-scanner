@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from app.signals.indicators import calculate_indicators
+from app.signals.indicators import calculate_indicators, _bb_squeeze, _obv_trend, _consolidation
 
 def _make_df(n=250):
     np.random.seed(42)
@@ -69,3 +69,20 @@ def test_rs_vs_spy_without_spy_df():
     result = calculate_indicators(df)
     # Without SPY data, should default to 0.0
     assert result["rs_vs_spy"] == 0.0
+
+def test_bb_squeeze_short_data():
+    close = pd.Series([100.0] * 15)
+    squeeze, intensity = _bb_squeeze(close)
+    assert squeeze is False
+    assert intensity == 0
+
+def test_obv_trend_short_data():
+    close = pd.Series([100.0, 101.0, 102.0])
+    volume = pd.Series([1000, 1000, 1000])
+    assert _obv_trend(close, volume) == "neutral"
+
+def test_consolidation_short_data():
+    close = pd.Series([100.0] * 30)
+    high = pd.Series([101.0] * 30)
+    low = pd.Series([99.0] * 30)
+    assert _consolidation(high, low, close) == "normal"

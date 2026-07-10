@@ -88,8 +88,7 @@ def _obv_trend(close: pd.Series, volume: pd.Series, price_window: int = 10) -> s
     obv = (direction * volume).cumsum()
     if len(obv) < price_window + 2:
         return "neutral"
-    obv_slope = obv.ewm(span=price_window, adjust=False).mean()
-    slope_now = float(obv_slope.iloc[-1]) - float(obv_slope.iloc[-price_window])
+    slope_now = float(obv.iloc[-1]) - float(obv.iloc[-price_window])
     price_chg = (float(close.iloc[-1]) - float(close.iloc[-price_window])) / float(close.iloc[-price_window]) * 100
     if slope_now > 0 and price_chg < 2.0:
         return "accumulating"
@@ -122,9 +121,10 @@ def _consolidation(high: pd.Series, low: pd.Series, close: pd.Series,
     recent_mid = float(close.iloc[-recent:].mean())
     prior_range = (float(high.iloc[-(recent + prior):-recent].max()) -
                    float(low.iloc[-(recent + prior):-recent].min()))
-    if recent_mid == 0 or prior_range == 0:
+    prior_mid = float(close.iloc[-(recent + prior):-recent].mean())
+    if recent_mid == 0 or prior_mid == 0 or prior_range == 0:
         return "normal"
-    ratio = (recent_range / recent_mid) / (prior_range / recent_mid)
+    ratio = (recent_range / recent_mid) / (prior_range / prior_mid)
     if ratio < 0.50:
         return "tight"
     if ratio > 1.50:
