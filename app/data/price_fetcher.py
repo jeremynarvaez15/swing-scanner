@@ -54,12 +54,18 @@ def get_stock_details(ticker: str, df: pd.DataFrame) -> dict:
         t = yf.Ticker(ticker)
         info = t.info
         details["sector"] = info.get("sector", "N/A")
-        raw_short_pct = info.get("shortPercentOfFloat")
-        if raw_short_pct is not None:
-            details["short_pct"] = round(float(raw_short_pct) * 100, 1)
-        raw_short_ratio = info.get("shortRatio")
-        if raw_short_ratio is not None:
-            details["short_ratio"] = round(float(raw_short_ratio), 1)
+        try:
+            raw_short_pct = info.get("shortPercentOfFloat")
+            if isinstance(raw_short_pct, (int, float)):
+                details["short_pct"] = round(float(raw_short_pct) * 100, 1)
+        except Exception:
+            pass
+        try:
+            raw_short_ratio = info.get("shortRatio")
+            if isinstance(raw_short_ratio, (int, float)):
+                details["short_ratio"] = round(float(raw_short_ratio), 1)
+        except Exception:
+            pass
 
         # Earnings date
         cal = t.calendar
