@@ -21,6 +21,20 @@ def _verdict(score: int, days_to_earnings, sentiment_label: str) -> tuple[str, s
     return "⚠️", "Use Caution", "#FF8800"
 
 
+def _setup_status(indicators: dict) -> tuple[str, str, str]:
+    """Return (emoji, label, color) for setup status line."""
+    squeeze = indicators.get("bb_squeeze", False)
+    obv = indicators.get("obv_trend", "neutral")
+    consol = indicators.get("consolidation", "normal")
+    if squeeze and obv == "accumulating":
+        return "🔥", "Squeeze building — breakout may be near", "#FF8800"
+    if obv == "accumulating" and consol == "tight":
+        return "📈", "Accumulating — volume rising quietly", "#00C853"
+    if squeeze:
+        return "🔥", "Coiling — watch for a breakout", "#FF8800"
+    return "💤", "No setup yet — waiting for conditions", "#9E9E9E"
+
+
 def _mini_chart(history_df):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -108,6 +122,17 @@ def render_watchlist(stocks: list[dict]):
                 f'border-radius:8px;padding:6px 10px;margin:6px 0;text-align:center">'
                 f'<span style="font-size:18px">{verdict_emoji}</span> '
                 f'<span style="color:{verdict_color};font-weight:bold">{verdict_label}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            # --- Setup Status ---
+            setup_emoji, setup_label, setup_color = _setup_status(indicators)
+            st.markdown(
+                f'<div style="font-size:12px;margin:4px 0;padding:4px 8px;'
+                f'background:{setup_color}22;border-radius:6px;'
+                f'border-left:3px solid {setup_color}">'
+                f'{setup_emoji} <span style="color:{setup_color}">{setup_label}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
