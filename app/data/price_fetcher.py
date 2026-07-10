@@ -18,6 +18,8 @@ def get_stock_details(ticker: str, df: pd.DataFrame) -> dict:
         "sector": "N/A",
         "target_up": None,
         "target_down": None,
+        "short_pct": None,
+        "short_ratio": None,
     }
 
     try:
@@ -52,6 +54,12 @@ def get_stock_details(ticker: str, df: pd.DataFrame) -> dict:
         t = yf.Ticker(ticker)
         info = t.info
         details["sector"] = info.get("sector", "N/A")
+        raw_short_pct = info.get("shortPercentOfFloat")
+        if raw_short_pct is not None:
+            details["short_pct"] = round(float(raw_short_pct) * 100, 1)
+        raw_short_ratio = info.get("shortRatio")
+        if raw_short_ratio is not None:
+            details["short_ratio"] = round(float(raw_short_ratio), 1)
 
         # Earnings date
         cal = t.calendar
@@ -74,13 +82,15 @@ def get_stock_details(ticker: str, df: pd.DataFrame) -> dict:
     return details
 
 
-def fetch_price_data(tickers: list[str]) -> dict[str, pd.DataFrame]:
+def fetch_price_data(tickers: list[str]) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """
-    Download 1 year of daily OHLCV for all tickers in one API call.
-    Returns dict keyed by ticker symbol.
+    Download 1 year of daily OHLCV for all tickers + SPY in one API call.
+    Returns (dict keyed by ticker symbol, spy_df).
+    SPY is excluded from the result dict but returned separately for RS calculation.
     """
+    all_symbols = list(set(tickers) | {"SPY"})
     raw = yf.download(
-        tickers=tickers,
+        tickers=all_symbols,
         period="1y",
         interval="1d",
         group_by="ticker",
@@ -90,22 +100,28 @@ def fetch_price_data(tickers: list[str]) -> dict[str, pd.DataFrame]:
     )
 
     result = {}
-    if len(tickers) == 1:
-        ticker = tickers[0]
+    spy_df = pd.DataFrame()
+
+    if len(all_symbols) == 1:
+        # Only happens if tickers=["SPY"]
         df = raw[["Open", "High", "Low", "Close", "Volume"]].copy()
         df.dropna(inplace=True)
-        result[ticker] = df
+        spy_df = df
     else:
-        for ticker in tickers:
+        for ticker in all_symbols:
             try:
                 df = raw[ticker][["Open", "High", "Low", "Close", "Volume"]].copy()
                 df.dropna(inplace=True)
-                if len(df) > 0:
+                if len(df) == 0:
+                    continue
+                if ticker == "SPY":
+                    spy_df = df
+                else:
                     result[ticker] = df
             except KeyError:
                 continue
 
-    return result
+    return result, spy_df
 
 
 def get_current_price(ticker: str) -> dict:
