@@ -40,7 +40,7 @@ def _is_market_open() -> bool:
 @st.cache_data(ttl=_REFRESH_INTERVAL)
 def load_all_data(watchlist: tuple, _cache_buster: int):
     all_tickers = get_all_tickers()
-    price_data = fetch_price_data(list(all_tickers))
+    price_data, spy_df = fetch_price_data(list(all_tickers))
 
     news_api_key = st.secrets.get("NEWS_API_KEY", "")
     news_data = fetch_news(list(watchlist), news_api_key) if news_api_key else {}
