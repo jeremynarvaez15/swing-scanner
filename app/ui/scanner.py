@@ -34,16 +34,7 @@ def render_scanner(scan_results: list[dict]):
     filtered = filtered.sort_values("score", ascending=False)
     st.caption(f"Showing {len(filtered)} of {len(df)} stocks")
 
-    # Add hover tooltip column for ticker
-    if "ma_20" in filtered.columns:
-        filtered["Ticker"] = filtered.apply(
-            lambda r: ticker_tooltip(
-                r["ticker"],
-                r.get("ma_20"), r.get("ma_50"), r.get("ma_200"), r.get("price")
-            ), axis=1
-        )
-    else:
-        filtered["Ticker"] = filtered["ticker"].apply(lambda t: f"${t}")
+    filtered["Ticker"] = filtered["ticker"].apply(lambda t: f"${t}")
 
     display_cols = {
         "Ticker": "Ticker",
