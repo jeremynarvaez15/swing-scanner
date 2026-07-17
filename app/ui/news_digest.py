@@ -77,7 +77,17 @@ def _render_market_feed(summaries: list[dict]):
 
 
 def _render_ai_watch(summaries: list[dict]):
-    ai_articles = [a for a in summaries if a.get("ai_trade_tag")]
+    ai_articles = [
+        a for a in summaries
+        if a.get("ai_trade_tag") or a.get("category") == "ai"
+    ]
+    seen = set()
+    unique = []
+    for a in ai_articles:
+        if a["url"] not in seen:
+            seen.add(a["url"])
+            unique.append(a)
+    ai_articles = unique
     ai_articles.sort(key=lambda a: a.get("impact_score", 0), reverse=True)
 
     st.subheader("🤖 AI & NVDA Watch")
