@@ -114,17 +114,47 @@ def fetch_ai_news() -> list[dict]:
     return [a for a in fetch_market_news() if a["category"] == "ai"]
 
 
+_AMBIGUOUS_TICKERS = {
+    "T", "F", "C", "V", "D", "L", "A", "K", "O", "R", "M", "PM",
+    "ALL", "DD", "DIS", "MA", "SO", "LOW", "BK",
+}
+
+_AMBIGUOUS_NAMES = {
+    "dow", "general", "united", "american", "national", "digital",
+    "global", "international", "first", "allied",
+}
+
+
+def _name_matches(name: str, text: str) -> bool:
+    """True only if the full company name appears as a meaningful phrase."""
+    name_lower = name.lower().strip()
+    words = name_lower.split()
+    # Skip very short or ambiguous names
+    if len(words) == 1 and (len(name_lower) <= 4 or name_lower in _AMBIGUOUS_NAMES):
+        return False
+    return name_lower in text
+
+
+def _ticker_matches(ticker: str, text: str) -> bool:
+    """True only if ticker appears as a standalone word (not embedded in another word)."""
+    import re
+    if ticker in _AMBIGUOUS_TICKERS or len(ticker) <= 1:
+        return False
+    # Must be surrounded by non-alphanumeric characters or start/end of string
+    pattern = r'(?<![a-z0-9])' + re.escape(ticker.lower()) + r'(?![a-z0-9])'
+    return bool(re.search(pattern, text))
+
+
 def fetch_company_news(tickers: list[dict]) -> dict[str, list[dict]]:
     all_articles = fetch_market_news()
     result: dict[str, list[dict]] = {}
     for entry in tickers:
         ticker = entry["ticker"]
-        name = entry["name"].lower()
-        ticker_lower = ticker.lower()
+        name = entry["name"]
         matches = []
         for a in all_articles:
             text = (a["title"] + " " + a["description"]).lower()
-            if ticker_lower in text or name in text:
+            if _name_matches(name, text) or _ticker_matches(ticker, text):
                 matches.append({**a, "ticker": ticker, "category": "company"})
         if matches:
             result[ticker] = matches
