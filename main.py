@@ -65,18 +65,17 @@ def load_news_digest(_cache_buster: int):
     from app.data.news_digest_fetcher import fetch_market_news, fetch_ai_news, fetch_company_news
     from app.data.ai_summarizer import summarize_articles
 
-    news_api_key = st.secrets.get("NEWS_API_KEY", "")
     anthropic_key = st.secrets.get("ANTHROPIC_API_KEY", "")
     sp100 = get_sp100_tickers()
 
-    market_articles = fetch_market_news(news_api_key) if news_api_key else []
-    ai_articles = fetch_ai_news(news_api_key) if news_api_key else []
-    company_map = fetch_company_news(news_api_key, sp100) if news_api_key else {}
-
+    all_articles = fetch_market_news()
+    company_map = fetch_company_news(sp100)
     company_articles = [a for articles in company_map.values() for a in articles]
-    all_articles = market_articles + ai_articles + company_articles
 
-    return summarize_articles(all_articles, anthropic_key)
+    combined = {a["url"]: a for a in all_articles + company_articles}
+    all_unique = list(combined.values())
+
+    return summarize_articles(all_unique, anthropic_key)
 
 
 def _build_stock_record(ticker: str, price_data: dict, news_data: dict,
