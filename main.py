@@ -59,6 +59,26 @@ def load_fear_greed():
     return fetch_fear_greed()
 
 
+@st.cache_data(ttl=3600)
+def load_news_digest(_cache_buster: int):
+    from app.data.sp100_tickers import get_sp100_tickers
+    from app.data.news_digest_fetcher import fetch_market_news, fetch_ai_news, fetch_company_news
+    from app.data.ai_summarizer import summarize_articles
+
+    news_api_key = st.secrets.get("NEWS_API_KEY", "")
+    anthropic_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+    sp100 = get_sp100_tickers()
+
+    market_articles = fetch_market_news(news_api_key) if news_api_key else []
+    ai_articles = fetch_ai_news(news_api_key) if news_api_key else []
+    company_map = fetch_company_news(news_api_key, sp100) if news_api_key else {}
+
+    company_articles = [a for articles in company_map.values() for a in articles]
+    all_articles = market_articles + ai_articles + company_articles
+
+    return summarize_articles(all_articles, anthropic_key)
+
+
 def _build_stock_record(ticker: str, price_data: dict, news_data: dict,
                          spy_df=None, fetch_details: bool = False) -> dict | None:
     df = price_data.get(ticker)
@@ -238,12 +258,18 @@ def main():
             progress.progress((i + 1) / len(all_tickers))
     progress.empty()
 
-    tab1, tab2 = st.tabs(["📊 Market Scanner", "🔥 Early Signals"])
+    news_cache_buster = int(time.time() // 3600)
+    news_summaries = load_news_digest(news_cache_buster)
+
+    tab1, tab2, tab3 = st.tabs(["📊 Market Scanner", "🔥 Early Signals", "📰 News Digest"])
     with tab1:
         render_scanner(scan_results)
     with tab2:
         from app.ui.early_signals import render_early_signals
         render_early_signals(scan_results)
+    with tab3:
+        from app.ui.news_digest import render_news_digest
+        render_news_digest(news_summaries)
 
     if "cooldowns" not in st.session_state:
         st.session_state["cooldowns"] = {}
