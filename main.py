@@ -188,8 +188,26 @@ Configure your phone number and alert thresholds in ⚙️ Settings to receive a
 ### Early Signals Tab
 Stocks that are simultaneously **coiling** (Bollinger squeeze), **accumulating** (OBV rising), and **leading the market** (outperforming SPY). This is your daily shortlist of potential breakout candidates.
 
+### 📰 News Digest Tab
+AI-summarized news from CNBC, Reuters, MarketWatch, Yahoo Finance, BBC, AP News, Business Insider, TechCrunch, MIT Technology Review, VentureBeat, and The Verge — refreshed every hour.
+
+Each article shows three badges:
+
+| Badge | Meaning |
+|---|---|
+| 🔴 [9–10] | Major market-moving event (Fed decision, mega-cap earnings, geopolitical shock) |
+| 🟠 [7–8] | Significant news (sector rotation, major company announcement, macro data) |
+| 🟡 [5–6] | Notable (analyst upgrades, industry trends) |
+| ⚪ [1–4] | Background noise (minor updates) |
+| 🟢 | Bullish for US stocks overall |
+| 🔴 | Bearish for US stocks overall |
+| ⚪ | Neutral impact on stocks |
+| 🤖 | AI/semiconductor/data center story |
+
+Articles are ranked highest impact first. The **AI & NVDA Watch** section filters only stories relevant to NVIDIA, AMD, Broadcom, Microsoft AI, Google AI, and Meta AI. The **Your Stocks** section groups news by company.
+
 ---
-*Data refreshes every 15 minutes during market hours (9:30am–4:00pm ET, Mon–Fri).*
+*Data refreshes every 15 minutes during market hours (9:30am–4:00pm ET, Mon–Fri). News Digest refreshes every hour.*
         """)
 
 
